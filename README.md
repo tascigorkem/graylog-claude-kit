@@ -3,6 +3,9 @@
 Search Graylog from your terminal, and let [Claude Code](https://code.claude.com) investigate
 production logs for you.
 
+[Graylog](https://graylog.org) is an open-source platform that collects logs from your services
+in one place and lets you search them. If your team uses it, this kit gives you a faster way in.
+
 The kit has three parts that work together:
 
 | Part | What it is | Path |
