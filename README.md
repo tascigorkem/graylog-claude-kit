@@ -18,16 +18,45 @@ You can use the CLI on its own. The skill and agent need the CLI.
 
 ## What the CLI adds over the Graylog UI
 
-```bash
-# Relative time windows
-graylog-search --since 2h 'application:"order-service" AND level:<=4'
+The output below is illustrative (made-up services and data), but shows the real format.
 
-# Counts over ALL hits, computed by Graylog (not just the first page of messages)
-graylog-search --since 1d --group-by application --top 10 'level:<=3'
+**Relative time windows**: no timestamps to compute.
 
-# Follow one request across every service, oldest first, with the service on each line
-graylog-search --since 6h --trace 6f1c2a9e0b7d4c3a
+```console
+$ graylog-search --since 2h 'application:"order-service" AND level:<=4'
+# 3 hits, showing 3 (times are UTC)
+2026-11-05T13:12:40.118Z  [InventoryClient] Slow response from inventory-service: 2140ms
+2026-11-05T13:58:02.731Z  [PaymentClient] Retrying payment request (attempt 2 of 3)
+2026-11-05T14:02:11.482Z  [OrderController] Order creation failed: payment declined by provider
 ```
+
+**Counts over all hits**, computed by Graylog, so you see where the problems are before reading
+a single line:
+
+```console
+$ graylog-search --since 1d --group-by application --top 5 'level:<=3'
+# 1874 hits, grouped by application (top 5 values; 96 hits elsewhere or without the field)
+1022  payment-service
+ 431  order-service
+ 187  notification-service
+  92  inventory-service
+  46  api-gateway
+```
+
+**One request across every service**, oldest first, with the service on each line:
+
+```console
+$ graylog-search --since 6h --trace 6f1c2a9e0b7d4c3a
+# 6 hits, showing 6 (times are UTC)
+2026-11-05T14:02:10.903Z  api-gateway  [RequestLogger] POST /api/orders received
+2026-11-05T14:02:10.951Z  order-service  [OrderController] Creating order for cart c-1042
+2026-11-05T14:02:11.204Z  inventory-service  [StockService] Reserved 2 items for cart c-1042
+2026-11-05T14:02:11.377Z  payment-service  [ProviderClient] Provider answered 402: insufficient funds
+2026-11-05T14:02:11.482Z  order-service  [OrderController] Order creation failed: payment declined by provider
+2026-11-05T14:02:11.530Z  inventory-service  [StockService] Released reservation for cart c-1042
+```
+
+Add `--group-by application` to a trace to see only which services it touched.
 
 It also handles token and password auth (including the session-login fallback some LDAP setups
 need), mints API tokens for you, and has a `--diagnose` mode that reports which auth path works
