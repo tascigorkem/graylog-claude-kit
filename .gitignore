@@ -1,0 +1,30 @@
+# Credentials and secrets (never commit)
+credentials-*.properties
+token-*
+.env
+.env.*
+
+# Saved log output (production logs can contain personal data)
+*.log
+*.jsonl
+results/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# Claude Code personal settings (shared .claude/ files stay committable)
+.claude/settings.local.json
+CLAUDE.local.md
+
+# IDE, editor and OS files
+.idea/
+.vscode/
+*.swp
+*~
+.DS_Store
+Thumbs.db
