@@ -41,6 +41,9 @@ from collections import Counter
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+# Keep in step with "version" in plugins/graylog-search/.claude-plugin/plugin.json.
+__version__ = "0.1.0"
+
 DEFAULT_LIMIT = 500
 DEFAULT_FIELDS = "timestamp,source,application,message"
 DEFAULT_TOKEN_NAME = "graylog-search-cli"
@@ -458,6 +461,7 @@ def build_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("query", nargs="?", help="Lucene query, the same string as the Graylog search bar")
+    parser.add_argument("-V", "--version", action="version", version=f"%(prog)s {__version__}")
 
     window = parser.add_argument_group("time window (default: last 24 hours)")
     window.add_argument("-f", "--from", dest="from_ts", metavar="TS", help="ISO-8601 UTC start, e.g. 2026-09-01T00:00:00.000Z")

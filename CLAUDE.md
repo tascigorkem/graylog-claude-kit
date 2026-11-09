@@ -29,7 +29,20 @@ Notes for working on this repository. User documentation is in `README.md`.
   - `README.md` (Configure / All settings and Using the CLI),
   - `skills/graylog/SKILL.md`, when it changes how Claude should query,
   - the `--help` examples in `graylog_search.py`.
-- A change users should receive bumps `version` in `plugins/graylog-search/.claude-plugin/plugin.json`.
+- A change users should receive bumps `version` in `plugins/graylog-search/.claude-plugin/plugin.json`
+  and `__version__` in `graylog_search.py` (they must match), and gets a `CHANGELOG.md` entry.
+
+## Releasing
+
+Semantic versioning: patch for fixes, minor for additions, major for breaking changes (while on
+0.x, a minor version may also break the CLI). For version X.Y.Z:
+
+1. Move the `[Unreleased]` entries in `CHANGELOG.md` under `## [X.Y.Z] - <date>` and update the
+   links at the bottom.
+2. Set the version in `plugin.json` and `__version__`; run the checks below.
+3. `git commit -am "Release X.Y.Z"`, then `git tag -a vX.Y.Z -m "vX.Y.Z"` on that commit.
+4. `git push && git push origin vX.Y.Z`, then create the GitHub Release from the tag with the
+   changelog entry as its notes. Never move a pushed tag; release a new version instead.
 - `LICENSE` and `NOTICE` exist twice: at the repository root (for GitHub) and in
   `plugins/graylog-search/` (shipped with every installed copy). Keep each pair identical.
 - The project is Apache-2.0. New source files start with `# SPDX-License-Identifier: Apache-2.0`.
@@ -43,6 +56,9 @@ python3 -c 'import ast; ast.parse(open("plugins/graylog-search/skills/graylog/sc
 plugins/graylog-search/bin/graylog-search --help
 claude plugin validate . && claude plugin validate plugins/graylog-search
 cmp LICENSE plugins/graylog-search/LICENSE && cmp NOTICE plugins/graylog-search/NOTICE
+test "$(plugins/graylog-search/bin/graylog-search --version | cut -d' ' -f2)" = \
+     "$(python3 -c 'import json; print(json.load(open("plugins/graylog-search/.claude-plugin/plugin.json"))["version"])')" \
+  && echo "versions match"
 ```
 
 If you have access to a Graylog server, also run `graylog-search --diagnose` and one search with

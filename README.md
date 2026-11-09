@@ -190,6 +190,8 @@ output
 
 account
   --whoami, --diagnose, --create-token [NAME], --list-tokens
+
+  -V, --version               print the version (include it in bug reports)
 ```
 
 Examples:
