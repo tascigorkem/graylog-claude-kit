@@ -65,8 +65,14 @@ If you have access to a Graylog server, also run `graylog-search --diagnose` and
 `--group-by` and `--trace`.
 
 GitHub Actions (`.github/workflows/checks.yml`) runs the same checks on every push and pull
-request: Python 3.9 (on `ubuntu-24.04`, the last Ubuntu with 3.9 builds) and the newest stable
-Python (3.15) on Linux, the newest on macOS, plus ShellCheck on the wrapper. Python 3.9 stays
-supported because it is macOS's built-in `python3`; when GitHub retires `ubuntu-24.04`, revisit
-that run. When a new Python is released (each October), move the "newest" runs to it. When a check is added or
-changed here, update the workflow in the same change, and the other way round.
+request, in two stages:
+
+1. `repository`: ShellCheck on the wrapper, the JSON manifests, the version match and the
+   license copies.
+2. `python`, only if stage 1 passed: Python 3.9 on `ubuntu-24.04` (the last Ubuntu with 3.9
+   builds), and the newest stable Python (3.15) on Linux and on macOS.
+
+Python 3.9 stays supported because it is macOS's built-in `python3`; when GitHub retires
+`ubuntu-24.04`, revisit that run. When a new Python is released (each October), move the
+"newest" runs to it. When a check is added or changed here, update the workflow in the same
+change, and the other way round.
