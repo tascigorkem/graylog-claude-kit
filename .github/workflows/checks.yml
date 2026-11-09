@@ -1,0 +1,88 @@
+# Runs the "Checks before committing" from CLAUDE.md on every push and pull request:
+# the oldest supported Python (3.9) and a current one on Linux, plus a current one on macOS.
+name: checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:        # allows a manual run from the Actions tab
+
+permissions:
+  contents: read
+
+jobs:
+  repository:
+    name: Repository consistency
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Shell wrapper is valid POSIX sh
+        run: |
+          sh -n plugins/graylog-search/bin/graylog-search
+          shellcheck --shell=sh plugins/graylog-search/bin/graylog-search
+
+      - name: Plugin and marketplace manifests are valid JSON
+        run: |
+          python3 -m json.tool .claude-plugin/marketplace.json > /dev/null
+          python3 -m json.tool plugins/graylog-search/.claude-plugin/plugin.json > /dev/null
+
+      - name: CLI version matches plugin.json
+        run: |
+          cli="$(plugins/graylog-search/bin/graylog-search --version | cut -d' ' -f2)"
+          manifest="$(python3 -c 'import json; print(json.load(open("plugins/graylog-search/.claude-plugin/plugin.json"))["version"])')"
+          echo "CLI: $cli  plugin.json: $manifest"
+          test "$cli" = "$manifest"
+
+      - name: LICENSE and NOTICE copies are identical
+        run: |
+          cmp LICENSE plugins/graylog-search/LICENSE
+          cmp NOTICE plugins/graylog-search/NOTICE
+
+  python:
+    name: Python ${{ matrix.python }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false      # report every combination, even if one fails
+      matrix:
+        include:
+          - { os: ubuntu-latest, python: "3.9" }    # oldest supported Python
+          - { os: ubuntu-latest, python: "3.13" }   # current Python
+          - { os: macos-latest,  python: "3.13" }   # macOS: BSD tools, different /bin/sh
+    env:
+      SCRIPT: plugins/graylog-search/skills/graylog/scripts/graylog_search.py
+      CLI: plugins/graylog-search/bin/graylog-search
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Compile
+        run: python3 -m py_compile "$SCRIPT"
+
+      - name: No syntax newer than Python 3.9
+        run: python3 -c "import ast, os; ast.parse(open(os.environ['SCRIPT']).read(), feature_version=(3, 9))"
+
+      - name: CLI starts and prints help
+        run: |
+          "$CLI" --help > /dev/null
+          "$CLI" --version
+
+      - name: CLI works through a symlink
+        run: |
+          mkdir -p "$RUNNER_TEMP/bin"
+          ln -s "$PWD/$CLI" "$RUNNER_TEMP/bin/graylog-search"
+          "$RUNNER_TEMP/bin/graylog-search" --version
+
+      - name: Clear errors without configuration
+        run: |
+          # No host configured: must fail with exit code 1 and say how to fix it.
+          set +e
+          out="$(env -u GRAYLOG_HOST "$CLI" --since 1h 'x' 2>&1)"; code=$?
+          set -e
+          echo "$out"
+          test "$code" -eq 1
+          echo "$out" | grep -q "GRAYLOG_HOST"

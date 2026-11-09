@@ -63,3 +63,7 @@ test "$(plugins/graylog-search/bin/graylog-search --version | cut -d' ' -f2)" = 
 
 If you have access to a Graylog server, also run `graylog-search --diagnose` and one search with
 `--group-by` and `--trace`.
+
+GitHub Actions (`.github/workflows/checks.yml`) runs the same checks on every push and pull
+request: Python 3.9 and 3.13 on Linux, Python 3.13 on macOS, plus ShellCheck on the wrapper. When a check is added or
+changed here, update the workflow in the same change, and the other way round.
