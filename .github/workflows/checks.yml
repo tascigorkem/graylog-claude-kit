@@ -1,5 +1,5 @@
 # Runs the "Checks before committing" from CLAUDE.md on every push and pull request:
-# the oldest supported Python (3.9) and a current one on Linux, plus a current one on macOS.
+# the oldest supported Python (3.9) and the newest stable one on Linux, plus the newest on macOS.
 name: checks
 
 on:
@@ -47,9 +47,12 @@ jobs:
       fail-fast: false      # report every combination, even if one fails
       matrix:
         include:
-          - { os: ubuntu-latest, python: "3.9" }    # oldest supported Python
-          - { os: ubuntu-latest, python: "3.13" }   # current Python
-          - { os: macos-latest,  python: "3.13" }   # macOS: BSD tools, different /bin/sh
+          # Python 3.9 is end of life, but it is the built-in python3 on macOS, so this project
+          # still supports it. GitHub has no 3.9 builds for Ubuntu 26.04 (ubuntu-latest), so
+          # this run is pinned to the last Ubuntu that has them.
+          - { os: ubuntu-24.04,  python: "3.9" }    # oldest supported by this project
+          - { os: ubuntu-latest, python: "3.15" }   # newest stable Python
+          - { os: macos-latest,  python: "3.15" }   # macOS: BSD tools, different /bin/sh
     env:
       SCRIPT: plugins/graylog-search/skills/graylog/scripts/graylog_search.py
       CLI: plugins/graylog-search/bin/graylog-search
