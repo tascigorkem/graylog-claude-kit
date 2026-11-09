@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Görkem Taşçı
 """Query a Graylog server from the command line.
 
 Built for humans and for AI coding agents (Claude Code), with additions that make log

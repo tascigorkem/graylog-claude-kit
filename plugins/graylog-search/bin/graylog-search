@@ -1,0 +1,26 @@
+#!/bin/sh
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Görkem Taşçı
+# graylog-search: command-line entry point.
+# The implementation is the Python script bundled with the graylog skill, so the CLI and Claude
+# always run the same code. Looks next to this file first (installed plugin, or a clone of the
+# repository), then in a manually installed skill.
+# Follow symlinks (e.g. ~/.local/bin/graylog-search -> the clone) to find where this file really is.
+self="$0"
+while [ -L "$self" ]; do
+  link="$(readlink "$self")"
+  case "$link" in
+    /*) self="$link" ;;
+    *)  self="$(dirname "$self")/$link" ;;
+  esac
+done
+here="$(cd "$(dirname "$self")" && pwd)"
+for script in \
+  "$here/../skills/graylog/scripts/graylog_search.py" \
+  "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/graylog/scripts/graylog_search.py"; do
+  if [ -f "$script" ]; then
+    exec python3 "$script" "$@"
+  fi
+done
+echo "graylog-search: graylog_search.py not found. Install the plugin or the skill (see README.md)." >&2
+exit 1

@@ -10,11 +10,12 @@ The kit has three parts that work together:
 
 | Part | What it is | Path |
 | --- | --- | --- |
-| **`graylog-search` CLI** | A command-line Graylog client. Python 3.9+ standard library only; no `pip install` | `bin/graylog-search` → `skill/graylog/scripts/graylog_search.py` |
-| **`graylog` skill** | Teaches Claude Code how to query your Graylog well: time-boxing, query patterns, counting and tracing, auth troubleshooting | `skill/graylog/SKILL.md` |
-| **`graylog-investigator` agent** | A read-only Claude Code subagent that runs a multi-query investigation in its own context and returns a short report (conclusion, timeline, evidence, queries used) | `agent/graylog-investigator.md` |
+| **`graylog-search` CLI** | A command-line Graylog client. Python 3.9+ standard library only; no `pip install` | `bin/graylog-search` → `skills/graylog/scripts/graylog_search.py` |
+| **`graylog` skill** | Teaches Claude Code how to query your Graylog well: time-boxing, query patterns, counting and tracing, auth troubleshooting | `skills/graylog/SKILL.md` |
+| **`graylog-investigator` agent** | A read-only Claude Code subagent that runs a multi-query investigation in its own context and returns a short report (conclusion, timeline, evidence, queries used) | `agents/graylog-investigator.md` |
 
-You can use the CLI on its own. The skill and agent need the CLI.
+All three ship together as the **`graylog-search` Claude Code plugin** (paths above are relative
+to `plugins/graylog-search/`). You can also use the CLI on its own, without Claude.
 
 ## What the CLI adds over the Graylog UI
 
@@ -72,28 +73,49 @@ without printing secrets.
 
 ## Install
 
-```bash
-git clone <this-repo-url> graylog-claude-kit && cd graylog-claude-kit
+### As a Claude Code plugin (recommended)
 
-# 1. The skill (includes the Python script)
-mkdir -p ~/.claude/skills
-cp -R skill/graylog ~/.claude/skills/graylog
+In Claude Code:
 
-# 2. The agent (optional)
-mkdir -p ~/.claude/agents
-cp agent/graylog-investigator.md ~/.claude/agents/
-
-# 3. The CLI on your PATH
-mkdir -p ~/.local/bin
-cp bin/graylog-search ~/.local/bin/graylog-search
-chmod +x ~/.local/bin/graylog-search ~/.claude/skills/graylog/scripts/graylog_search.py
+```text
+/plugin marketplace add tascigorkem/graylog-claude-kit
+/plugin install graylog-search@tascigorkem
 ```
 
-Make sure `~/.local/bin` is on your `PATH`. The `bin/graylog-search` wrapper runs the script
-from the installed skill, so the CLI and Claude always use the same code. Running
-`bin/graylog-search` directly from the cloned repo also works.
+On recent Claude Code versions this also works in one step:
+`/plugin install graylog-search --marketplace tascigorkem/graylog-claude-kit`.
 
-Start a new Claude Code session (or run `/reload-plugins`) to pick up the skill and agent.
+Then run `/reload-plugins` or start a new session. You get the skill and the agent, and Claude
+can run `graylog-search` straight away: a plugin's `bin/` folder is on Claude's `PATH` while the
+plugin is enabled. Update later with `/plugin marketplace update tascigorkem`.
+
+### The CLI in your own terminal
+
+The plugin makes `graylog-search` available to Claude, not to your shell. To use it yourself,
+clone the repository and link the command onto your `PATH`:
+
+```bash
+git clone https://github.com/tascigorkem/graylog-claude-kit.git ~/graylog-claude-kit
+mkdir -p ~/.local/bin
+ln -s ~/graylog-claude-kit/plugins/graylog-search/bin/graylog-search ~/.local/bin/graylog-search
+```
+
+Make sure `~/.local/bin` is on your `PATH`. Update with `git -C ~/graylog-claude-kit pull`.
+
+### Manual install, without the plugin system
+
+Copy the parts into your personal Claude Code folders instead. Use this if you want to edit the
+skill for your team (see [Customise the skill](#customise-the-skill-for-your-team)): plugin
+updates replace the plugin's files, so local edits there do not survive an update.
+
+```bash
+cd ~/graylog-claude-kit/plugins/graylog-search
+mkdir -p ~/.claude/skills ~/.claude/agents
+cp -R skills/graylog ~/.claude/skills/graylog
+cp agents/graylog-investigator.md ~/.claude/agents/
+```
+
+Then link the CLI as above. Start a new Claude Code session to pick up the skill and agent.
 
 ## Configure
 
@@ -205,7 +227,8 @@ What happened to user 3f2b8c1e-… around 14:00 UTC yesterday?
 ```
 
 Claude loads the `graylog` skill and runs `graylog-search`. You can also call the skill
-explicitly with `/graylog <question>`.
+explicitly: `/graylog-search:graylog <question>` with the plugin, or `/graylog <question>` with a
+manual install.
 
 ### The `graylog-investigator` agent
 
@@ -221,12 +244,17 @@ Use graylog-investigator: checkout failed for user 3f2b8c1e-… on 2026-11-05 ar
 Find out what went wrong.
 ```
 
+With the plugin, the agent's full name is `graylog-search:graylog-investigator`; asking for
+"graylog-investigator" by name works either way.
+
 The agent does not see your conversation, so include the identifiers, the time window and what
 you already know in the request.
 
 ## Customise the skill for your team
 
-`skill/graylog/SKILL.md` ships with generic examples. Search it for `CUSTOMISE` and fill in:
+`skills/graylog/SKILL.md` ships with generic examples. Edit your own copy (a manual install, or a
+fork of this repository that your team installs as its plugin), search it for `CUSTOMISE` and
+fill in:
 
 - **Streams**: your stream ids and names, so Claude picks the right one.
 - **Useful fields**: your field names (run `graylog-search -F '' -l 1 '*'` once to see them).
@@ -249,18 +277,27 @@ The more of your setup the skill describes, the fewer exploratory queries Claude
 ## Layout
 
 ```text
-bin/graylog-search                         CLI wrapper (POSIX sh)
-skill/graylog/SKILL.md                     Claude Code skill
-skill/graylog/scripts/graylog_search.py    the implementation
-agent/graylog-investigator.md              Claude Code subagent
-CLAUDE.md                                  notes for contributors working on this repo with Claude Code
-LICENSE                                    MIT
+.claude-plugin/marketplace.json                   the "tascigorkem" plugin marketplace
+plugins/graylog-search/
+  README.md, LICENSE, NOTICE                      shipped with every installed copy
+  .claude-plugin/plugin.json                      plugin manifest (name, version)
+  bin/graylog-search                              CLI wrapper (POSIX sh), on Claude's PATH
+  skills/graylog/SKILL.md                         Claude Code skill
+  skills/graylog/scripts/graylog_search.py        the implementation
+  agents/graylog-investigator.md                  Claude Code subagent
+CLAUDE.md                                         notes for contributors working on this repo
+LICENSE, NOTICE                                   Apache License 2.0 and copyright notice
 ```
 
 ## License
 
-graylog-claude-kit is developed under the [MIT License](LICENSE).
+graylog-claude-kit is developed under the [Apache License 2.0](LICENSE); see also [NOTICE](NOTICE).
 
 Görkem Taşçı, 2026
 
 LinkedIn: https://www.linkedin.com/in/tascigorkem/
+
+## Trademarks
+
+Graylog is a trademark of Graylog, Inc. This project is not affiliated with or endorsed by
+Graylog, Inc.

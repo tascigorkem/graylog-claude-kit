@@ -5,18 +5,25 @@ user-invocable: true
 allowed-tools:
   - Read
   - Bash(graylog-search *)
-  - Bash(python3 ~/.claude/skills/graylog/scripts/graylog_search.py *)
+  - Bash(python3 ${CLAUDE_SKILL_DIR}/scripts/graylog_search.py *)
   - Bash(jq *)
 ---
 
 # Graylog log search
 
-Query Graylog from the CLI. The tool is `graylog-search` (on `PATH`), a thin wrapper around the
-Python script bundled with this skill (standard library only, Python 3.9+):
+Query Graylog from the CLI. The tool is `graylog-search`, a thin wrapper around the Python script
+bundled with this skill (standard library only, Python 3.9+):
 
 ```bash
 graylog-search [options] '<query>'
-# equivalent: python3 ~/.claude/skills/graylog/scripts/graylog_search.py [options] '<query>'
+```
+
+When this skill comes from the `graylog-search` plugin, the command is on your `PATH`
+automatically. If `graylog-search` is not found (a manual install without the CLI), run the
+bundled script directly instead; it takes the same arguments:
+
+```bash
+python3 ${CLAUDE_SKILL_DIR}/scripts/graylog_search.py [options] '<query>'
 ```
 
 The host comes from `$GRAYLOG_HOST` (or `-H`), the default stream from `$GRAYLOG_STREAM` (or `-s`;

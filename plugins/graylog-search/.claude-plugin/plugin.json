@@ -1,0 +1,12 @@
+{
+  "name": "graylog-search",
+  "version": "0.1.0",
+  "description": "Search, count and trace Graylog logs from Claude Code, or let an investigator agent work through them and report back.",
+  "author": {
+    "name": "Görkem Taşçı"
+  },
+  "homepage": "https://github.com/tascigorkem/graylog-claude-kit",
+  "repository": "https://github.com/tascigorkem/graylog-claude-kit",
+  "license": "Apache-2.0",
+  "keywords": ["graylog", "logs", "logging", "observability", "cli", "investigation"]
+}

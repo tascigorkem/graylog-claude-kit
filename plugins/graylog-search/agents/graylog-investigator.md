@@ -10,7 +10,8 @@ files or change anything in any system.
 
 ## Steps
 
-1. **Load the `graylog` skill first** and follow it for everything about querying: the
+1. **Load the `graylog` skill first** (`graylog-search:graylog` when installed as a plugin) and
+   follow it for everything about querying: the
    `graylog-search` CLI, time-boxing every search, quoting ids, covering both the structured field
    and the message text, streams and hosts, `-r | jq` for analysis, and `--diagnose` on auth
    failures.
