@@ -233,6 +233,33 @@ Claude loads the `graylog` skill and runs `graylog-search`. You can also call th
 explicitly: `/graylog-search:graylog <question>` with the plugin, or `/graylog <question>` with a
 manual install.
 
+An example session (illustrative: made-up services and data). Following the skill, Claude counts
+first, then reads only the lines that matter:
+
+```text
+> Check the logs: did order-service log errors in the last two hours?
+
+⏺ Skill(graylog-search:graylog)
+
+⏺ Bash(graylog-search --since 2h --group-by SourceSimpleClassName 'application:"order-service" AND level:<=4')
+  ⎿  # 3 hits, grouped by SourceSimpleClassName
+     1  InventoryClient
+     1  PaymentClient
+     1  OrderController
+
+⏺ Bash(graylog-search --since 2h 'application:"order-service" AND level:<=4')
+  ⎿  # 3 hits, showing 3 (times are UTC)
+     2026-11-05T13:12:40.118Z  [InventoryClient] Slow response from inventory-service: 2140ms
+     2026-11-05T13:58:02.731Z  [PaymentClient] Retrying payment request (attempt 2 of 3)
+     2026-11-05T14:02:11.482Z  [OrderController] Order creation failed: payment declined by provider
+
+⏺ One error and two warnings in the last two hours (times in UTC):
+  - 14:02 — the only error: an order failed because the payment provider declined it.
+  - 13:58 — a payment request was retried, so the provider was already slow or refusing.
+  - 13:12 — one slow inventory call (2.1 s), probably unrelated.
+  If you want to know why the payment was declined, I can trace that request across services.
+```
+
 ### The `graylog-investigator` agent
 
 Use it for investigations that need many queries. It works in its own context, keeps the raw
@@ -245,6 +272,36 @@ everything about querying. So the agent needs the skill installed, and anything 
 ```text
 Use graylog-investigator: checkout failed for user 3f2b8c1e-… on 2026-11-05 around 14:00 UTC.
 Find out what went wrong.
+```
+
+The agent runs its queries out of sight and returns only a report like this (illustrative:
+made-up services and data):
+
+```text
+Conclusion
+  The checkout failed because the payment provider declined the card (HTTP 402, insufficient
+  funds). The services behaved correctly: the order was rejected and the reserved stock was
+  released. Confidence: high. No sign of a system fault.
+
+Timeline (UTC, 2026-11-05)
+  14:02:10.903  api-gateway        RequestLogger    POST /api/orders received
+  14:02:10.951  order-service      OrderController  creating order for cart c-1042
+  14:02:11.204  inventory-service  StockService     reserved 2 items
+  14:02:11.377  payment-service    ProviderClient   provider answered 402: insufficient funds
+  14:02:11.482  order-service      OrderController  order creation failed: payment declined
+  14:02:11.530  inventory-service  StockService     reservation released
+
+Evidence
+  2026-11-05T14:02:11.377Z  payment-service  [ProviderClient] Provider answered 402: insufficient funds
+  2026-11-05T14:02:11.482Z  order-service  [OrderController] Order creation failed: payment declined by provider
+  2026-11-05T14:02:11.530Z  inventory-service  [StockService] Released reservation for cart c-1042
+
+Queries used
+  graylog-search -f 2026-11-05T13:30:00.000Z -t 2026-11-05T14:30:00.000Z '"3f2b8c1e-…" OR userId:"3f2b8c1e-…"'
+  graylog-search -f 2026-11-05T13:30:00.000Z -t 2026-11-05T14:30:00.000Z --trace 6f1c2a9e0b7d4c3a
+
+Open points
+  The logs don't show why the provider refused the card; check the provider's dashboard.
 ```
 
 With the plugin, the agent's full name is `graylog-search:graylog-investigator`; asking for
