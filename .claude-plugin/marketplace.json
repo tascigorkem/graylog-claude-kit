@@ -1,7 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
-  "name": "tascigorkem",
-  "description": "Claude Code plugins by Görkem Taşçı",
+  "name": "graylog-claude-kit",
+  "description": "Graylog for Claude Code: the graylog-search plugin with its CLI, skill and investigator agent",
   "owner": {
     "name": "Görkem Taşçı"
   },

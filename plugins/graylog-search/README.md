@@ -7,7 +7,7 @@ A Claude Code plugin for searching Graylog: the `graylog-search` CLI, the `grayl
 
 ```text
 /plugin marketplace add tascigorkem/graylog-claude-kit
-/plugin install graylog-search@tascigorkem
+/plugin install graylog-search@graylog-claude-kit
 ```
 
 ## Configure

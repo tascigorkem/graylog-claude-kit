@@ -14,6 +14,9 @@ Notes for working on this repository. User documentation is in `README.md`.
   plugin folder on purpose, so it is not installed with the plugin.
 - The plugin name must not contain "claude" (Claude Code rejects names that read as
   Anthropic's own); the repository name may.
+- The marketplace is named after the repository (`graylog-claude-kit`), so every repository
+  with its own marketplace has a unique name. Never reuse a marketplace name across repositories:
+  users who add both would get a clash.
 
 ## Rules
 

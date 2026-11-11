@@ -37,7 +37,7 @@ First public release.
 - `graylog` Claude Code skill that teaches Claude how to query Graylog well.
 - `graylog-investigator` Claude Code subagent for read-only, multi-query investigations that
   return a short report.
-- Packaging as the `graylog-search` plugin in the `tascigorkem` marketplace.
+- Packaging as the `graylog-search` plugin in the `graylog-claude-kit` marketplace.
 
 [Unreleased]: https://github.com/tascigorkem/graylog-claude-kit/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/tascigorkem/graylog-claude-kit/releases/tag/v0.1.0

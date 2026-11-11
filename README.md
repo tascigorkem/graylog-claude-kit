@@ -80,7 +80,7 @@ In Claude Code:
 
 ```text
 /plugin marketplace add tascigorkem/graylog-claude-kit
-/plugin install graylog-search@tascigorkem
+/plugin install graylog-search@graylog-claude-kit
 ```
 
 On recent Claude Code versions this also works in one step:
@@ -88,7 +88,7 @@ On recent Claude Code versions this also works in one step:
 
 Then run `/reload-plugins` or start a new session. You get the skill and the agent, and Claude
 can run `graylog-search` straight away: a plugin's `bin/` folder is on Claude's `PATH` while the
-plugin is enabled. Update later with `/plugin marketplace update tascigorkem`.
+plugin is enabled. Update later with `/plugin marketplace update graylog-claude-kit`.
 
 ### The CLI in your own terminal
 
@@ -282,7 +282,7 @@ The more of your setup the skill describes, the fewer exploratory queries Claude
 ```text
 graylog-claude-kit/
 ├── .claude-plugin/
-│   └── marketplace.json                    the "tascigorkem" plugin marketplace
+│   └── marketplace.json                    the "graylog-claude-kit" plugin marketplace
 ├── plugins/
 │   └── graylog-search/                     the plugin: everything users install
 │       ├── .claude-plugin/
