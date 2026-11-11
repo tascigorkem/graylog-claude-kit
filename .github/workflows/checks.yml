@@ -16,7 +16,7 @@ jobs:
     name: Repository consistency
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Ruff reads its settings from ruff.toml. The version is pinned so a new Ruff release
       # cannot turn the build red on its own; raise it deliberately.
@@ -72,9 +72,9 @@ jobs:
       SCRIPT: plugins/graylog-search/skills/graylog/scripts/graylog_search.py
       CLI: plugins/graylog-search/bin/graylog-search
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python }}
 
