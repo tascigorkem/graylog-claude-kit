@@ -70,6 +70,9 @@ jobs:
       - name: No syntax newer than Python 3.9
         run: python3 -c "import ast, os; ast.parse(open(os.environ['SCRIPT']).read(), feature_version=(3, 9))"
 
+      - name: Unit tests
+        run: python3 -m unittest discover -s tests -v
+
       - name: CLI starts and prints help
         run: |
           "$CLI" --help > /dev/null

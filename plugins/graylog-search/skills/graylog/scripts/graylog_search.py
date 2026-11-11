@@ -49,14 +49,7 @@ DEFAULT_FIELDS = "timestamp,source,application,message"
 DEFAULT_TOKEN_NAME = "graylog-search-cli"
 TIMEOUT_SECONDS = 120
 
-CONFIG_DIR = Path(os.environ.get("GRAYLOG_CONFIG_DIR", Path.home() / ".config" / "graylog-search")).expanduser()
-
-# Fields that may carry a trace or correlation id; --trace searches all of them.
-TRACE_FIELDS = tuple(
-    field.strip()
-    for field in os.environ.get("GRAYLOG_TRACE_FIELDS", "traceId,trace_id,X-B3-TraceId,spanId").split(",")
-    if field.strip()
-)
+DEFAULT_TRACE_FIELDS = "traceId,trace_id,X-B3-TraceId,spanId"
 
 # Fields tried, in order, for the "service" and "logger" columns of a message line.
 SERVICE_FIELDS = ("application", "service", "app", "source")
@@ -65,6 +58,24 @@ LOGGER_FIELDS = ("SourceSimpleClassName", "logger_name", "LoggerName", "source")
 
 class GraylogError(Exception):
     """A failure the user can act on; printed without a traceback."""
+
+
+# --------------------------------------------------------------------------------------------
+# Configuration from the environment
+# --------------------------------------------------------------------------------------------
+# Read when called, not when the module is imported, so a changed environment (in tests, or a
+# caller that sets variables first) is always honoured.
+
+def config_dir() -> Path:
+    """Where token and credential files live: $GRAYLOG_CONFIG_DIR or ~/.config/graylog-search."""
+    default = Path.home() / ".config" / "graylog-search"
+    return Path(os.environ.get("GRAYLOG_CONFIG_DIR") or default).expanduser()
+
+
+def trace_fields() -> tuple[str, ...]:
+    """Fields that may carry a trace or correlation id; --trace searches all of them."""
+    raw = os.environ.get("GRAYLOG_TRACE_FIELDS") or DEFAULT_TRACE_FIELDS
+    return tuple(field.strip() for field in raw.split(",") if field.strip())
 
 
 # --------------------------------------------------------------------------------------------
@@ -102,8 +113,9 @@ def resolve_window(args: argparse.Namespace) -> tuple[str, str]:
 class Credentials:
     def __init__(self, host: str):
         slug = host.replace(".", "_")
-        self.token_file = CONFIG_DIR / f"token-{slug}"
-        self.cred_file = CONFIG_DIR / f"credentials-{slug}.properties"
+        self.config_dir = config_dir()
+        self.token_file = self.config_dir / f"token-{slug}"
+        self.cred_file = self.config_dir / f"credentials-{slug}.properties"
         self.user = ""
         self.password = ""
         self.login_user = ""      # set only for username/password auth
@@ -140,12 +152,12 @@ def missing_credentials_help(host: str, creds: Credentials) -> str:
     return (
         f"No Graylog credentials for {host}. Create one of these:\n\n"
         f"  # username + password (your Graylog login name)\n"
-        f"  mkdir -p {CONFIG_DIR} && umask 077 && cat > {creds.cred_file} <<'EOC'\n"
+        f"  mkdir -p {creds.config_dir} && umask 077 && cat > {creds.cred_file} <<'EOC'\n"
         f"user=YOUR_GRAYLOG_USERNAME\n"
         f"password=YOUR_GRAYLOG_PASSWORD\n"
         f"EOC\n\n"
         f"  # or an API token\n"
-        f"  mkdir -p {CONFIG_DIR} && umask 077 && printf '%s' 'TOKEN' > {creds.token_file}\n\n"
+        f"  mkdir -p {creds.config_dir} && umask 077 && printf '%s' 'TOKEN' > {creds.token_file}\n\n"
         f"  # or export GRAYLOG_TOKEN for this shell\n"
     )
 
@@ -353,19 +365,25 @@ def print_counts(counts: list[tuple[str, int]], total: int, field: str, note: st
 # Commands
 # --------------------------------------------------------------------------------------------
 
+def build_query(query: str | None, trace: str | None) -> str:
+    """The Lucene query to send: the user's query, a trace lookup, or a trace narrowed by the query.
+
+    A trace id matches as plain text and in every trace field, e.g. for trace "abc":
+    ("abc" OR traceId:"abc" OR …), followed by AND (<query>) when a query is given too.
+    """
+    if trace:
+        trace = trace.replace('"', "")
+        clauses = [f'"{trace}"'] + [f'{field}:"{trace}"' for field in trace_fields()]
+        built = "(" + " OR ".join(clauses) + ")"
+        return f"{built} AND ({query})" if query else built
+    if query:
+        return query
+    raise GraylogError("A query is required, e.g. graylog-search --since 2h 'application:\"order-service\"'")
+
+
 def cmd_search(gl: Graylog, args: argparse.Namespace) -> None:
     frm, to = resolve_window(args)
-
-    if args.trace:
-        trace = args.trace.replace('"', "")
-        clauses = [f'"{trace}"'] + [f'{field}:"{trace}"' for field in TRACE_FIELDS]
-        query = "(" + " OR ".join(clauses) + ")"
-        if args.query:
-            query += f" AND ({args.query})"
-    elif args.query:
-        query = args.query
-    else:
-        raise GraylogError("A query is required, e.g. graylog-search --since 2h 'application:\"order-service\"'")
+    query = build_query(args.query, args.trace)
 
     if args.group_by:
         server_counts = gl.terms(args.group_by, query, frm, to, args.stream, args.top)
@@ -410,7 +428,7 @@ def cmd_create_token(gl: Graylog, args: argparse.Namespace) -> None:
     token = resp.json().get("token")
     if not token:
         raise GraylogError(f"No token in the response: {resp.body[:300]}")
-    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    gl.creds.config_dir.mkdir(parents=True, exist_ok=True)
     token_file = gl.creds.token_file
     fd = os.open(token_file, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(fd, "w") as handle:

@@ -10,6 +10,8 @@ Notes for working on this repository. User documentation is in `README.md`.
   install. None of it is an active skill or agent for working on this repo.
 - `plugins/graylog-search/skills/graylog/scripts/graylog_search.py` is the whole implementation.
   `plugins/graylog-search/bin/graylog-search` is only a POSIX `sh` wrapper that finds and runs it.
+- `tests/` holds the unit tests (standard-library `unittest`, no network). It sits outside the
+  plugin folder on purpose, so it is not installed with the plugin.
 - The plugin name must not contain "claude" (Claude Code rejects names that read as
   Anthropic's own); the repository name may.
 
@@ -47,10 +49,15 @@ Semantic versioning: patch for fixes, minor for additions, major for breaking ch
   `plugins/graylog-search/` (shipped with every installed copy). Keep each pair identical.
 - The project is Apache-2.0. New source files start with `# SPDX-License-Identifier: Apache-2.0`.
 - Error messages say what went wrong and how to fix it, and never print secrets.
+- Configuration from the environment is read when needed (`config_dir()`, `trace_fields()`),
+  never in module-level constants, so tests and callers can change it.
+- A change in behaviour comes with a test in `tests/test_graylog_search.py`. Tests never reach a
+  real Graylog: replace `Graylog.request` (see `FakeGraylog`) instead.
 
 ## Checks before committing
 
 ```bash
+python3 -m unittest discover -s tests
 python3 -m py_compile plugins/graylog-search/skills/graylog/scripts/graylog_search.py
 python3 -c 'import ast; ast.parse(open("plugins/graylog-search/skills/graylog/scripts/graylog_search.py").read(), feature_version=(3, 9))'
 plugins/graylog-search/bin/graylog-search --help

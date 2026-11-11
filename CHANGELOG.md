@@ -7,6 +7,16 @@ command-line interface between minor versions.
 
 ## [Unreleased]
 
+### Added
+
+- Unit tests (`tests/`, standard-library `unittest`) run by GitHub Actions on Python 3.9 and the
+  newest stable Python, on Linux and macOS.
+
+### Changed
+
+- `GRAYLOG_CONFIG_DIR` and `GRAYLOG_TRACE_FIELDS` are read when the CLI needs them instead of
+  when the script is loaded. No change for command-line use.
+
 ## [0.1.0] - 2026-11-09
 
 First public release.
