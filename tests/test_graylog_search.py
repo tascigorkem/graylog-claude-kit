@@ -151,7 +151,7 @@ class CredentialsTest(unittest.TestCase):
     def test_password_file(self):
         self.write("credentials-graylog_example_com.properties", "# comment\nuser=alice\npassword=se=cret\n")
         creds = gs.Credentials(self.HOST)
-        self.assertEqual((creds.user, creds.password), ("alice", "se=cret"))   # "=" inside a value survives
+        self.assertEqual((creds.user, creds.password), ("alice", "se=cret"))  # "=" inside a value survives
         self.assertEqual(creds.login_user, "alice")
 
     def test_token_file_beats_password_file(self):
@@ -159,7 +159,7 @@ class CredentialsTest(unittest.TestCase):
         self.write("token-graylog_example_com", "  tok123 \n")
         creds = gs.Credentials(self.HOST)
         self.assertEqual((creds.user, creds.password), ("tok123", "token"))
-        self.assertEqual(creds.login_user, "")                                # not password auth
+        self.assertEqual(creds.login_user, "")  # not password auth
 
     def test_environment_token_beats_files(self):
         self.write("token-graylog_example_com", "from-file")
@@ -222,16 +222,23 @@ class TermsTest(unittest.TestCase):
 
 
 class OutputTest(unittest.TestCase):
-    MESSAGE = {"timestamp": "2026-11-05T14:02:11.482Z", "application": "order-service",
-               "SourceSimpleClassName": "OrderController", "message": "Order creation failed"}
+    MESSAGE = {
+        "timestamp": "2026-11-05T14:02:11.482Z",
+        "application": "order-service",
+        "SourceSimpleClassName": "OrderController",
+        "message": "Order creation failed",
+    }
 
     def test_message_line(self):
-        self.assertEqual(gs.message_line(self.MESSAGE, False),
-                         "2026-11-05T14:02:11.482Z  [OrderController] Order creation failed")
+        self.assertEqual(
+            gs.message_line(self.MESSAGE, False), "2026-11-05T14:02:11.482Z  [OrderController] Order creation failed"
+        )
 
     def test_message_line_with_service(self):
-        self.assertEqual(gs.message_line(self.MESSAGE, True),
-                         "2026-11-05T14:02:11.482Z  order-service  [OrderController] Order creation failed")
+        self.assertEqual(
+            gs.message_line(self.MESSAGE, True),
+            "2026-11-05T14:02:11.482Z  order-service  [OrderController] Order creation failed",
+        )
 
     def test_message_line_falls_back_to_other_field_names(self):
         msg = {"timestamp": "t", "service": "svc", "logger_name": "Log", "message": "m"}
@@ -241,7 +248,9 @@ class OutputTest(unittest.TestCase):
         out = io.StringIO()
         with redirect_stdout(out):
             gs.print_counts([("payment-service", 1022), ("api-gateway", 46)], 1874, "application", "")
-        self.assertEqual(out.getvalue(), "# 1874 hits, grouped by application\n1022  payment-service\n  46  api-gateway\n")
+        self.assertEqual(
+            out.getvalue(), "# 1874 hits, grouped by application\n1022  payment-service\n  46  api-gateway\n"
+        )
 
 
 class MainTest(unittest.TestCase):

@@ -66,6 +66,7 @@ class GraylogError(Exception):
 # Read when called, not when the module is imported, so a changed environment (in tests, or a
 # caller that sets variables first) is always honoured.
 
+
 def config_dir() -> Path:
     """Where token and credential files live: $GRAYLOG_CONFIG_DIR or ~/.config/graylog-search."""
     default = Path.home() / ".config" / "graylog-search"
@@ -82,6 +83,7 @@ def trace_fields() -> tuple[str, ...]:
 # Time handling
 # --------------------------------------------------------------------------------------------
 
+
 def iso_utc(moment: datetime) -> str:
     """Format a datetime the way Graylog's absolute search expects it."""
     return moment.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
@@ -93,8 +95,12 @@ def parse_since(value: str) -> timedelta:
     if not match:
         raise GraylogError(f"--since expects a number and a unit (m, h, d, w), e.g. 30m or 2h; got '{value}'")
     amount, unit = int(match.group(1)), match.group(2)
-    return {"m": timedelta(minutes=amount), "h": timedelta(hours=amount),
-            "d": timedelta(days=amount), "w": timedelta(weeks=amount)}[unit]
+    return {
+        "m": timedelta(minutes=amount),
+        "h": timedelta(hours=amount),
+        "d": timedelta(days=amount),
+        "w": timedelta(weeks=amount),
+    }[unit]
 
 
 def resolve_window(args: argparse.Namespace) -> tuple[str, str]:
@@ -110,6 +116,7 @@ def resolve_window(args: argparse.Namespace) -> tuple[str, str]:
 # Credentials and HTTP
 # --------------------------------------------------------------------------------------------
 
+
 class Credentials:
     def __init__(self, host: str):
         slug = host.replace(".", "_")
@@ -118,7 +125,7 @@ class Credentials:
         self.cred_file = self.config_dir / f"credentials-{slug}.properties"
         self.user = ""
         self.password = ""
-        self.login_user = ""      # set only for username/password auth
+        self.login_user = ""  # set only for username/password auth
         self.login_password = ""
         self.kind = ""
 
@@ -189,8 +196,9 @@ class Graylog:
         self.creds = creds
         self.username = ""  # Graylog login name, once known
 
-    def request(self, method: str, path: str, params: dict | None = None,
-                body: dict | None = None, authenticate: bool = True) -> Response:
+    def request(
+        self, method: str, path: str, params: dict | None = None, body: dict | None = None, authenticate: bool = True
+    ) -> Response:
         url = f"https://{self.host}/api{path}"
         if params:
             url += "?" + urllib.parse.urlencode(params)
@@ -209,16 +217,19 @@ class Graylog:
         except urllib.error.HTTPError as err:
             return Response(err.code, err.read().decode("utf-8", "replace"))
         except urllib.error.URLError as err:
-            raise GraylogError(f"Could not reach https://{self.host}: {err.reason}. "
-                               "Check the host name and your network or VPN.") from err
+            raise GraylogError(
+                f"Could not reach https://{self.host}: {err.reason}. Check the host name and your network or VPN."
+            ) from err
 
     def check(self, resp: Response, hint: str = "") -> Response:
         if resp.ok:
             return resp
         lines = [f"Graylog returned HTTP {resp.status}  [auth: {self.creds.kind}]"]
         lines += {
-            401: ["  -> credentials rejected. Check the login name: with LDAP/SSO it may differ from "
-                  "your email or the host's domain. Run --diagnose for details."],
+            401: [
+                "  -> credentials rejected. Check the login name: with LDAP/SSO it may differ from "
+                "your email or the host's domain. Run --diagnose for details."
+            ],
             403: ["  -> authenticated, but your account lacks permission for this call or stream"],
             404: ["  -> no such resource (is the stream id right for this host?)"],
         }.get(resp.status, [])
@@ -231,8 +242,12 @@ class Graylog:
     # Some setups (LDAP-backed or tightened config) refuse basic auth with a password and only
     # allow the session endpoint: trade the password for a session id and use that instead.
     def session_login(self) -> Response:
-        resp = self.request("POST", "/system/sessions", authenticate=False, body={
-            "username": self.creds.login_user, "password": self.creds.login_password, "host": self.host})
+        resp = self.request(
+            "POST",
+            "/system/sessions",
+            authenticate=False,
+            body={"username": self.creds.login_user, "password": self.creds.login_password, "host": self.host},
+        )
         if resp.status == 200:
             data = resp.json()
             if data.get("session_id"):
@@ -251,7 +266,8 @@ class Graylog:
         if self.session_login().status != 200 or self.creds.password != "session":
             raise GraylogError(
                 f"Both basic auth and session login were rejected for user '{self.creds.login_user}'.\n"
-                "Check the username (your Graylog login name) and password.")
+                "Check the username (your Graylog login name) and password."
+            )
 
     def current_username(self) -> str:
         if self.username:
@@ -275,8 +291,16 @@ class Graylog:
             raise GraylogError(f"No id in the user record for '{self.username}'.")
         return user_id
 
-    def search(self, query: str, frm: str, to: str, stream: str | None, limit: int,
-               fields: str | None, sort: str = "timestamp:asc") -> dict:
+    def search(
+        self,
+        query: str,
+        frm: str,
+        to: str,
+        stream: str | None,
+        limit: int,
+        fields: str | None,
+        sort: str = "timestamp:asc",
+    ) -> dict:
         params = {"query": query, "from": frm, "to": to, "limit": limit, "sort": sort}
         if stream:
             params["filter"] = f"streams:{stream}"
@@ -286,8 +310,9 @@ class Graylog:
         hint = f"(stream {stream} may be outside your permissions)" if resp.status == 403 and stream else ""
         return self.check(resp, hint).json()
 
-    def terms(self, field: str, query: str, frm: str, to: str, stream: str | None,
-              size: int) -> tuple[list[tuple[str, int]], int] | None:
+    def terms(
+        self, field: str, query: str, frm: str, to: str, stream: str | None, size: int
+    ) -> tuple[list[tuple[str, int]], int] | None:
         """Server-side counts per field value over ALL hits, via the Views search API
         (Graylog 4+; the legacy /search/universal/.../terms endpoint is gone in 4.x).
         Returns (counts, total), or None if the API is unavailable to this account."""
@@ -295,12 +320,16 @@ class Graylog:
             "id": "q",
             "query": {"type": "elasticsearch", "query_string": query},
             "timerange": {"type": "absolute", "from": frm, "to": to},
-            "search_types": [{
-                "id": "counts", "type": "pivot", "rollup": True,
-                "row_groups": [{"type": "values", "field": field, "limit": size}],
-                "column_groups": [],
-                "series": [{"type": "count", "id": "count()"}],
-            }],
+            "search_types": [
+                {
+                    "id": "counts",
+                    "type": "pivot",
+                    "rollup": True,
+                    "row_groups": [{"type": "values", "field": field, "limit": size}],
+                    "column_groups": [],
+                    "series": [{"type": "count", "id": "count()"}],
+                }
+            ],
         }
         if stream:
             search_query["filter"] = {"type": "or", "filters": [{"type": "stream", "id": stream}]}
@@ -309,11 +338,15 @@ class Graylog:
             return None
         result = self.check(resp).json()["results"]["q"]
         if result.get("errors"):
-            raise GraylogError("Graylog could not run the count: "
-                               + "; ".join(str(e.get("description", e)) for e in result["errors"]))
+            raise GraylogError(
+                "Graylog could not run the count: " + "; ".join(str(e.get("description", e)) for e in result["errors"])
+            )
         pivot = result["search_types"]["counts"]
-        counts = [(row["key"][0], int(row["values"][0]["value"]))
-                  for row in pivot.get("rows", []) if row.get("source") == "leaf" and row.get("key")]
+        counts = [
+            (row["key"][0], int(row["values"][0]["value"]))
+            for row in pivot.get("rows", [])
+            if row.get("source") == "leaf" and row.get("key")
+        ]
         # Graylog reports messages without the field as "(Empty Value)", on top of the limit.
         counts = [(f"<no {field}>" if value == "(Empty Value)" else value, count) for value, count in counts]
         counts.sort(key=lambda kv: -kv[1])
@@ -327,6 +360,7 @@ def quote(segment: str) -> str:
 # --------------------------------------------------------------------------------------------
 # Output
 # --------------------------------------------------------------------------------------------
+
 
 def first_field(msg: dict, names: tuple[str, ...], default: str = "") -> str:
     for name in names:
@@ -365,6 +399,7 @@ def print_counts(counts: list[tuple[str, int]], total: int, field: str, note: st
 # Commands
 # --------------------------------------------------------------------------------------------
 
+
 def build_query(query: str | None, trace: str | None) -> str:
     """The Lucene query to send: the user's query, a trace lookup, or a trace narrowed by the query.
 
@@ -390,8 +425,11 @@ def cmd_search(gl: Graylog, args: argparse.Namespace) -> None:
         if server_counts is not None:
             counts, total = server_counts
             counted = sum(count for _, count in counts)
-            note = f" (top {len(counts)} values; {total - counted} hits elsewhere or without the field)" \
-                if counted < total else ""
+            note = (
+                f" (top {len(counts)} values; {total - counted} hits elsewhere or without the field)"
+                if counted < total
+                else ""
+            )
             print_counts(counts, total, args.group_by, note)
             return
         # Older or restricted servers: count over the fetched messages instead.
@@ -482,29 +520,52 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("-V", "--version", action="version", version=f"%(prog)s {__version__}")
 
     window = parser.add_argument_group("time window (default: last 24 hours)")
-    window.add_argument("-f", "--from", dest="from_ts", metavar="TS", help="ISO-8601 UTC start, e.g. 2026-09-01T00:00:00.000Z")
+    window.add_argument(
+        "-f", "--from", dest="from_ts", metavar="TS", help="ISO-8601 UTC start, e.g. 2026-09-01T00:00:00.000Z"
+    )
     window.add_argument("-t", "--to", dest="to_ts", metavar="TS", help="ISO-8601 UTC end (default: now)")
     window.add_argument("--since", metavar="AGE", help="relative window ending now: 30m, 2h, 3d, 1w")
 
     where = parser.add_argument_group("where to search")
     where.add_argument("-H", "--host", help="Graylog host (default: $GRAYLOG_HOST)")
-    where.add_argument("-s", "--stream", default=os.environ.get("GRAYLOG_STREAM") or None,
-                       help="stream id (default: $GRAYLOG_STREAM, or all streams you can read)")
+    where.add_argument(
+        "-s",
+        "--stream",
+        default=os.environ.get("GRAYLOG_STREAM") or None,
+        help="stream id (default: $GRAYLOG_STREAM, or all streams you can read)",
+    )
 
     output = parser.add_argument_group("output")
-    output.add_argument("-l", "--limit", type=int, default=DEFAULT_LIMIT, help=f"max messages (default {DEFAULT_LIMIT})")
-    output.add_argument("-F", "--fields", default=DEFAULT_FIELDS,
-                        help="with a value: 'time [logger] message' lines; with '' the full key=value dump")
+    output.add_argument(
+        "-l", "--limit", type=int, default=DEFAULT_LIMIT, help=f"max messages (default {DEFAULT_LIMIT})"
+    )
+    output.add_argument(
+        "-F",
+        "--fields",
+        default=DEFAULT_FIELDS,
+        help="with a value: 'time [logger] message' lines; with '' the full key=value dump",
+    )
     output.add_argument("-r", "--raw", action="store_true", help="print the raw JSON response")
-    output.add_argument("--group-by", metavar="FIELD",
-                        help="count hits per value of FIELD (e.g. application, SourceSimpleClassName, level)")
+    output.add_argument(
+        "--group-by",
+        metavar="FIELD",
+        help="count hits per value of FIELD (e.g. application, SourceSimpleClassName, level)",
+    )
     output.add_argument("--top", type=int, default=25, help="with --group-by: how many values to show (default 25)")
-    output.add_argument("--trace", metavar="ID",
-                        help="follow one trace id (or any id) across all services; the query, if given, narrows it")
+    output.add_argument(
+        "--trace",
+        metavar="ID",
+        help="follow one trace id (or any id) across all services; the query, if given, narrows it",
+    )
 
     account = parser.add_argument_group("account")
-    account.add_argument("--create-token", nargs="?", const=DEFAULT_TOKEN_NAME, metavar="NAME",
-                         help=f"mint an API token from your user/password (default name {DEFAULT_TOKEN_NAME})")
+    account.add_argument(
+        "--create-token",
+        nargs="?",
+        const=DEFAULT_TOKEN_NAME,
+        metavar="NAME",
+        help=f"mint an API token from your user/password (default name {DEFAULT_TOKEN_NAME})",
+    )
     account.add_argument("--list-tokens", action="store_true", help="show the tokens on your account")
     account.add_argument("--whoami", action="store_true", help="verify credentials and show your account")
     account.add_argument("--diagnose", action="store_true", help="test each auth path, report status codes only")

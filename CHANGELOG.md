@@ -11,6 +11,8 @@ command-line interface between minor versions.
 
 - Unit tests (`tests/`, standard-library `unittest`) run by GitHub Actions on Python 3.9 and the
   newest stable Python, on Linux and macOS.
+- Ruff lint and format checks (`ruff.toml`) in CI, and the code formatted with Ruff.
+- Dependabot keeps the GitHub Actions in the workflow up to date.
 
 ### Changed
 

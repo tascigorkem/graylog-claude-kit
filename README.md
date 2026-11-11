@@ -287,6 +287,9 @@ plugins/graylog-search/
   skills/graylog/SKILL.md                         Claude Code skill
   skills/graylog/scripts/graylog_search.py        the implementation
   agents/graylog-investigator.md                  Claude Code subagent
+tests/                                            unit tests (not installed with the plugin)
+.github/                                          CI checks and Dependabot
+ruff.toml                                         lint and format settings
 CLAUDE.md                                         notes for contributors working on this repo
 LICENSE, NOTICE                                   Apache License 2.0 and copyright notice
 ```

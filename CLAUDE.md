@@ -56,7 +56,13 @@ Semantic versioning: patch for fixes, minor for additions, major for breaking ch
 
 ## Checks before committing
 
+Ruff (linter and formatter, settings in `ruff.toml`) is the only tool not built into Python. It is
+a development tool, not a dependency of the CLI: install it with `brew install ruff` or
+`pipx install ruff`. Use the version pinned in `.github/workflows/checks.yml` when you can, and
+run `ruff format .` to fix formatting.
+
 ```bash
+ruff check . && ruff format --check .
 python3 -m unittest discover -s tests
 python3 -m py_compile plugins/graylog-search/skills/graylog/scripts/graylog_search.py
 python3 -c 'import ast; ast.parse(open("plugins/graylog-search/skills/graylog/scripts/graylog_search.py").read(), feature_version=(3, 9))'
@@ -74,8 +80,8 @@ If you have access to a Graylog server, also run `graylog-search --diagnose` and
 GitHub Actions (`.github/workflows/checks.yml`) runs the same checks on every push and pull
 request, in two stages:
 
-1. `repository`: ShellCheck on the wrapper, the JSON manifests, the version match and the
-   license copies.
+1. `repository`: Ruff lint and format, ShellCheck on the wrapper, the JSON manifests, the
+   version match and the license copies.
 2. `python`, only if stage 1 passed: Python 3.9 on `ubuntu-24.04` (the last Ubuntu with 3.9
    builds), and the newest stable Python (3.15) on Linux and on macOS.
 

@@ -1,0 +1,16 @@
+# Dependabot keeps the GitHub Actions used in .github/workflows/ up to date by opening pull
+# requests, which the checks workflow then tests. The project itself has no Python dependencies
+# (standard library only), so only the "github-actions" ecosystem is checked. The pinned Ruff
+# version inside checks.yml is not updated by Dependabot; raise it by hand.
+version: 2
+
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    groups:
+      actions:                        # one combined pull request instead of one per action
+        patterns: ["*"]
+    commit-message:
+      prefix: "ci"                    # PR titles like "ci: bump actions/checkout from 4 to 5"

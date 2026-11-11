@@ -1,0 +1,16 @@
+# Ruff: linter and formatter for the Python code (https://docs.astral.sh/ruff/).
+# Run from the repository root:  ruff check .   and   ruff format .
+
+# The CLI supports Python 3.9 (macOS's built-in python3), so Ruff must not suggest newer syntax.
+target-version = "py39"
+line-length = 120
+
+[lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes: unused imports and variables, undefined names
+    "I",    # import sorting
+    "B",    # flake8-bugbear: likely bugs and design problems
+    "UP",   # pyupgrade: modern syntax, within the target version above
+]

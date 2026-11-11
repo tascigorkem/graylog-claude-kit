@@ -18,6 +18,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Ruff reads its settings from ruff.toml. The version is pinned so a new Ruff release
+      # cannot turn the build red on its own; raise it deliberately.
+      - name: Ruff lint
+        uses: astral-sh/ruff-action@v3
+        with:
+          version: "0.17.4"
+          args: "check --output-format=github"
+
+      - name: Ruff format
+        uses: astral-sh/ruff-action@v3
+        with:
+          version: "0.17.4"
+          args: "format --check --diff"
+
       - name: Shell wrapper is valid POSIX sh
         run: |
           sh -n plugins/graylog-search/bin/graylog-search
