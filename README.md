@@ -269,39 +269,40 @@ The agent builds on the skill: its first step is to load the `graylog` skill and
 everything about querying. So the agent needs the skill installed, and anything you add to
 `SKILL.md` (streams, field names, known noise) improves the agent too.
 
-```text
-Use graylog-investigator: checkout failed for user 3f2b8c1e-… on 2026-11-05 around 14:00 UTC.
-Find out what went wrong.
-```
-
-The agent runs its queries out of sight and returns only a report like this (illustrative:
-made-up services and data):
+An example session (illustrative: made-up services and data). The agent runs its queries out
+of sight; your conversation gets only the report:
 
 ```text
-Conclusion
-  The checkout failed because the payment provider declined the card (HTTP 402, insufficient
-  funds). The services behaved correctly: the order was rejected and the reserved stock was
-  released. Confidence: high. No sign of a system fault.
+> Use graylog-investigator: checkout failed for user 3f2b8c1e-… on 2026-11-05 around 14:00 UTC.
+  Find out what went wrong.
 
-Timeline (UTC, 2026-11-05)
-  14:02:10.903  api-gateway        RequestLogger    POST /api/orders received
-  14:02:10.951  order-service      OrderController  creating order for cart c-1042
-  14:02:11.204  inventory-service  StockService     reserved 2 items
-  14:02:11.377  payment-service    ProviderClient   provider answered 402: insufficient funds
-  14:02:11.482  order-service      OrderController  order creation failed: payment declined
-  14:02:11.530  inventory-service  StockService     reservation released
+⏺ graylog-search:graylog-investigator(Investigate the failed checkout for user 3f2b8c1e-…)
+  ⎿  Done (4 tool uses · 38s)
 
-Evidence
-  2026-11-05T14:02:11.377Z  payment-service  [ProviderClient] Provider answered 402: insufficient funds
-  2026-11-05T14:02:11.482Z  order-service  [OrderController] Order creation failed: payment declined by provider
-  2026-11-05T14:02:11.530Z  inventory-service  [StockService] Released reservation for cart c-1042
+⏺ Conclusion
+    The checkout failed because the payment provider declined the card (HTTP 402, insufficient
+    funds). The services behaved correctly: the order was rejected and the reserved stock was
+    released. Confidence: high. No sign of a system fault.
 
-Queries used
-  graylog-search -f 2026-11-05T13:30:00.000Z -t 2026-11-05T14:30:00.000Z '"3f2b8c1e-…" OR userId:"3f2b8c1e-…"'
-  graylog-search -f 2026-11-05T13:30:00.000Z -t 2026-11-05T14:30:00.000Z --trace 6f1c2a9e0b7d4c3a
+  Timeline (UTC, 2026-11-05)
+    14:02:10.903  api-gateway        RequestLogger    POST /api/orders received
+    14:02:10.951  order-service      OrderController  creating order for cart c-1042
+    14:02:11.204  inventory-service  StockService     reserved 2 items
+    14:02:11.377  payment-service    ProviderClient   provider answered 402: insufficient funds
+    14:02:11.482  order-service      OrderController  order creation failed: payment declined
+    14:02:11.530  inventory-service  StockService     reservation released
 
-Open points
-  The logs don't show why the provider refused the card; check the provider's dashboard.
+  Evidence
+    2026-11-05T14:02:11.377Z  payment-service  [ProviderClient] Provider answered 402: insufficient funds
+    2026-11-05T14:02:11.482Z  order-service  [OrderController] Order creation failed: payment declined by provider
+    2026-11-05T14:02:11.530Z  inventory-service  [StockService] Released reservation for cart c-1042
+
+  Queries used
+    graylog-search -f 2026-11-05T13:30:00.000Z -t 2026-11-05T14:30:00.000Z '"3f2b8c1e-…" OR userId:"3f2b8c1e-…"'
+    graylog-search -f 2026-11-05T13:30:00.000Z -t 2026-11-05T14:30:00.000Z --trace 6f1c2a9e0b7d4c3a
+
+  Open points
+    The logs don't show why the provider refused the card; check the provider's dashboard.
 ```
 
 With the plugin, the agent's full name is `graylog-search:graylog-investigator`; asking for
