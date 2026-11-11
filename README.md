@@ -15,7 +15,8 @@ The kit has three parts that work together:
 | **`graylog-investigator` agent** | A read-only Claude Code subagent that runs a multi-query investigation in its own context and returns a short report (conclusion, timeline, evidence, queries used) | `agents/graylog-investigator.md` |
 
 All three ship together as the **`graylog-search` Claude Code plugin** (paths above are relative
-to `plugins/graylog-search/`). You can also use the CLI on its own, without Claude.
+to `plugins/graylog-search/`; see [Layout](#layout) for the full repository tree). You can also
+use the CLI on its own, without Claude.
 
 ## What the CLI adds over the Graylog UI
 
@@ -279,19 +280,37 @@ The more of your setup the skill describes, the fewer exploratory queries Claude
 ## Layout
 
 ```text
-.claude-plugin/marketplace.json                   the "tascigorkem" plugin marketplace
-plugins/graylog-search/
-  README.md, LICENSE, NOTICE                      shipped with every installed copy
-  .claude-plugin/plugin.json                      plugin manifest (name, version)
-  bin/graylog-search                              CLI wrapper (POSIX sh), on Claude's PATH
-  skills/graylog/SKILL.md                         Claude Code skill
-  skills/graylog/scripts/graylog_search.py        the implementation
-  agents/graylog-investigator.md                  Claude Code subagent
-tests/                                            unit tests (not installed with the plugin)
-.github/                                          CI checks and Dependabot
-ruff.toml                                         lint and format settings
-CLAUDE.md                                         notes for contributors working on this repo
-LICENSE, NOTICE                                   Apache License 2.0 and copyright notice
+graylog-claude-kit/
+├── .claude-plugin/
+│   └── marketplace.json                    the "tascigorkem" plugin marketplace
+├── plugins/
+│   └── graylog-search/                     the plugin: everything users install
+│       ├── .claude-plugin/
+│       │   └── plugin.json                 plugin manifest (name, version)
+│       ├── agents/
+│       │   └── graylog-investigator.md     Claude Code subagent
+│       ├── bin/
+│       │   └── graylog-search              CLI wrapper (POSIX sh), on Claude's PATH
+│       ├── skills/
+│       │   └── graylog/
+│       │       ├── SKILL.md                Claude Code skill
+│       │       └── scripts/
+│       │           └── graylog_search.py   the implementation
+│       ├── README.md                       ┐
+│       ├── LICENSE                         ├ shipped with every installed copy
+│       └── NOTICE                          ┘
+├── tests/
+│   └── test_graylog_search.py              unit tests (not installed with the plugin)
+├── .github/
+│   ├── workflows/
+│   │   └── checks.yml                      CI checks on every push and pull request
+│   └── dependabot.yml                      keeps the CI actions up to date
+├── ruff.toml                               lint and format settings
+├── CHANGELOG.md                            what changed in each version
+├── CLAUDE.md                               notes for contributors working on this repo
+├── LICENSE                                 Apache License 2.0
+├── NOTICE                                  copyright and trademark notice
+└── README.md                               this file
 ```
 
 ## License
