@@ -26,7 +26,7 @@ bundled script directly instead; it takes the same arguments:
 python3 ${CLAUDE_SKILL_DIR}/scripts/graylog_search.py [options] '<query>'
 ```
 
-The host comes from `$GRAYLOG_HOST` (or `-H`), the default stream from `$GRAYLOG_STREAM` (or `-s`;
+The host comes from `$GRAYLOG_HOST` (or `-H`; HTTPS unless it starts with `http://`), the default stream from `$GRAYLOG_STREAM` (or `-s`;
 unset means every stream the account can read). `--help` lists every option.
 
 Call it by name. Don't store the command in a shell variable (`G="python3 …"; $G …`): zsh does not

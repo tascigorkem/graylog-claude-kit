@@ -13,7 +13,8 @@ investigations cheaper than paging through raw messages:
 Standard library only (Python 3.9+): no pip install needed.
 
 Configuration (flags win over environment variables):
-  GRAYLOG_HOST          Graylog host name, e.g. graylog.example.com          (or -H/--host)
+  GRAYLOG_HOST          Graylog host name, e.g. graylog.example.com          (or -H/--host);
+                        HTTPS by default, prefix http:// for a server without TLS
   GRAYLOG_STREAM        default stream id; unset = all streams you can read  (or -s/--stream)
   GRAYLOG_CONFIG_DIR    where credentials live (default ~/.config/graylog-search)
   GRAYLOG_TRACE_FIELDS  comma-separated fields that hold trace ids
@@ -45,7 +46,6 @@ from pathlib import Path
 __version__ = "0.1.0"
 
 DEFAULT_LIMIT = 500
-DEFAULT_FIELDS = "timestamp,source,application,message"
 DEFAULT_TOKEN_NAME = "graylog-search-cli"
 TIMEOUT_SECONDS = 120
 
@@ -169,12 +169,26 @@ def missing_credentials_help(host: str, creds: Credentials) -> str:
     )
 
 
-def resolve_host(flag_value: str | None) -> str:
-    host = (flag_value or os.environ.get("GRAYLOG_HOST", "")).strip()
-    host = re.sub(r"^https?://", "", host).rstrip("/")
+def resolve_host(flag_value: str | None) -> tuple[str, str]:
+    """The (scheme, host) to talk to. HTTPS unless the value explicitly starts with http://."""
+    raw = (flag_value or os.environ.get("GRAYLOG_HOST", "")).strip()
+    match = re.match(r"^(https?)://", raw, flags=re.IGNORECASE)
+    scheme = match.group(1).lower() if match else "https"
+    host = (raw[match.end() :] if match else raw).rstrip("/")
     if not host:
         raise GraylogError("No Graylog host. Pass -H graylog.example.com or set GRAYLOG_HOST.")
-    return host
+    return scheme, host
+
+
+def is_local(host: str) -> bool:
+    """True for this machine, where unencrypted HTTP does not cross a network."""
+    if host.startswith("["):  # IPv6 literal, possibly with a port: [::1]:9000
+        name = host[: host.find("]") + 1]
+    elif host.count(":") == 1:  # name or IPv4 with a port: localhost:9000
+        name = host.split(":")[0]
+    else:
+        name = host
+    return name.lower() in ("localhost", "127.0.0.1", "[::1]", "::1")
 
 
 class Response:
@@ -191,15 +205,20 @@ class Response:
 
 
 class Graylog:
-    def __init__(self, host: str, creds: Credentials):
+    def __init__(self, host: str, creds: Credentials, scheme: str = "https"):
         self.host = host
+        self.scheme = scheme
         self.creds = creds
         self.username = ""  # Graylog login name, once known
+
+    @property
+    def base_url(self) -> str:
+        return f"{self.scheme}://{self.host}"
 
     def request(
         self, method: str, path: str, params: dict | None = None, body: dict | None = None, authenticate: bool = True
     ) -> Response:
-        url = f"https://{self.host}/api{path}"
+        url = f"{self.base_url}/api{path}"
         if params:
             url += "?" + urllib.parse.urlencode(params)
         headers = {"Accept": "application/json", "X-Requested-By": "cli"}
@@ -218,7 +237,7 @@ class Graylog:
             return Response(err.code, err.read().decode("utf-8", "replace"))
         except urllib.error.URLError as err:
             raise GraylogError(
-                f"Could not reach https://{self.host}: {err.reason}. Check the host name and your network or VPN."
+                f"Could not reach {self.base_url}: {err.reason}. Check the host name and your network or VPN."
             ) from err
 
     def check(self, resp: Response, hint: str = "") -> Response:
@@ -440,7 +459,9 @@ def cmd_search(gl: Graylog, args: argparse.Namespace) -> None:
         print_counts(counter.most_common(args.top), result.get("total_results", 0), args.group_by, note)
         return
 
-    fields = None if args.fields == "" else args.fields
+    # No fields list by default: Graylog 4.x ignores it, but newer versions (seen on 7.2) return
+    # only the listed fields, which would drop the logger class, trace ids and the app's own Time.
+    fields = args.fields or None
     result = gl.search(query, frm, to, args.stream, args.limit, fields)
     if args.raw:
         print(json.dumps(result))
@@ -478,7 +499,7 @@ def cmd_create_token(gl: Graylog, args: argparse.Namespace) -> None:
 
 def cmd_diagnose(gl: Graylog, args: argparse.Namespace) -> None:
     creds = gl.creds
-    print(f"host:      {gl.host}")
+    print(f"host:      {gl.base_url}")
     print(f"auth file: {creds.kind}")
     print(f"username:  {creds.login_user or '<token>'}")
     resp = gl.request("GET", f"/users/{quote(creds.login_user or 'x')}")
@@ -527,7 +548,11 @@ def build_parser() -> argparse.ArgumentParser:
     window.add_argument("--since", metavar="AGE", help="relative window ending now: 30m, 2h, 3d, 1w")
 
     where = parser.add_argument_group("where to search")
-    where.add_argument("-H", "--host", help="Graylog host (default: $GRAYLOG_HOST)")
+    where.add_argument(
+        "-H",
+        "--host",
+        help="Graylog host, e.g. graylog.example.com; HTTPS unless it starts with http:// (default: $GRAYLOG_HOST)",
+    )
     where.add_argument(
         "-s",
         "--stream",
@@ -542,8 +567,9 @@ def build_parser() -> argparse.ArgumentParser:
     output.add_argument(
         "-F",
         "--fields",
-        default=DEFAULT_FIELDS,
-        help="with a value: 'time [logger] message' lines; with '' the full key=value dump",
+        metavar="LIST",
+        help="return only these comma-separated fields; with '' print every field as key=value "
+        "(default: all fields, shown as 'time [logger] message' lines)",
     )
     output.add_argument("-r", "--raw", action="store_true", help="print the raw JSON response")
     output.add_argument(
@@ -575,8 +601,13 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
-        host = resolve_host(args.host)
-        gl = Graylog(host, Credentials(host))
+        scheme, host = resolve_host(args.host)
+        if scheme == "http" and not is_local(host):
+            print(
+                f"Warning: {host} is reached over plain HTTP; credentials and log data are sent unencrypted.",
+                file=sys.stderr,
+            )
+        gl = Graylog(host, Credentials(host), scheme)
         if args.diagnose:
             cmd_diagnose(gl, args)
             return 0

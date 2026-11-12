@@ -13,11 +13,21 @@ command-line interface between minor versions.
   newest stable Python, on Linux and macOS.
 - Ruff lint and format checks (`ruff.toml`) in CI, and the code formatted with Ruff.
 - Dependabot keeps the GitHub Actions in the workflow up to date.
+- Plain-HTTP Graylog servers: a host given as `http://…` (in `GRAYLOG_HOST` or `-H`) is used over
+  HTTP instead of being forced to HTTPS, with a warning when that sends credentials over the
+  network. HTTPS stays the default.
 
 ### Changed
 
 - `GRAYLOG_CONFIG_DIR` and `GRAYLOG_TRACE_FIELDS` are read when the CLI needs them instead of
   when the script is loaded. No change for command-line use.
+- `-F/--fields` no longer has a default list: searches return every field unless `-F LIST` is given.
+
+### Fixed
+
+- On newer Graylog versions (seen on 7.2) the `[logger]` column showed the message source instead
+  of the class name: the CLI always sent a short `fields` list, which Graylog 4.x ignored but newer
+  versions apply, dropping fields such as `SourceSimpleClassName`, `traceId` and the app's `Time`.
 
 ## [0.1.0] - 2026-11-09
 

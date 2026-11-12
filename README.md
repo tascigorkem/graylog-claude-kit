@@ -67,7 +67,8 @@ without printing secrets.
 ## Requirements
 
 - Python 3.9 or newer (`python3 --version`)
-- A Graylog 4.x or newer server you can log in to. Developed against Graylog 4.2.
+- A Graylog server you can log in to. Tested with Graylog 4.2 and 7.2; other 4.x–7.x versions are
+  expected to work. Reports about other versions are welcome.
   `--group-by` uses the Views search API (`/api/views/search/sync`); if your account cannot use
   it, the CLI falls back to counting the fetched messages and says so.
 - For the skill and agent: Claude Code.
@@ -123,7 +124,7 @@ Then link the CLI as above. Start a new Claude Code session to pick up the skill
 **1. Point it at your Graylog**, for example in `~/.zshrc` or `~/.bashrc`:
 
 ```bash
-export GRAYLOG_HOST=graylog.example.com
+export GRAYLOG_HOST=graylog.example.com          # HTTPS; use http://graylog.example.com:9000 for a server without TLS
 export GRAYLOG_STREAM=0123456789abcdef01234567   # optional: default stream; unset = all streams you can read
 ```
 
@@ -163,7 +164,7 @@ graylog-search --since 15m --group-by application '*'
 
 | Environment variable | Flag | Default | Purpose |
 | --- | --- | --- | --- |
-| `GRAYLOG_HOST` | `-H`, `--host` | (required) | Graylog host name |
+| `GRAYLOG_HOST` | `-H`, `--host` | (required) | Graylog host name; HTTPS unless it starts with `http://` |
 | `GRAYLOG_STREAM` | `-s`, `--stream` | all readable streams | Stream to search |
 | `GRAYLOG_TOKEN` | | | API token (highest priority credential) |
 | `GRAYLOG_CONFIG_DIR` | | `~/.config/graylog-search` | Where token and credential files live |
@@ -185,6 +186,7 @@ where
 output
   -l, --limit N               max messages (default 500)
   -r, --raw                   raw JSON (pipe to jq)
+  -F LIST                     return only these comma-separated fields
   -F ''                       full key=value dump of each message
   --group-by FIELD [--top N]  count hits per field value, server-side
   --trace ID                  follow one id across services; a query narrows it

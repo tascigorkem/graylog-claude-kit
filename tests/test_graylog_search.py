@@ -119,10 +119,23 @@ class ConfigurationTest(unittest.TestCase):
             self.assertEqual(gs.config_dir(), Path("/tmp/somewhere"))
 
     def test_resolve_host(self):
-        self.assertEqual(gs.resolve_host("https://graylog.example.com/"), "graylog.example.com")
+        self.assertEqual(gs.resolve_host("https://graylog.example.com/"), ("https", "graylog.example.com"))
         with mock.patch.dict(os.environ, {"GRAYLOG_HOST": "graylog-dev.example.com"}):
-            self.assertEqual(gs.resolve_host(None), "graylog-dev.example.com")
-            self.assertEqual(gs.resolve_host("graylog.example.com"), "graylog.example.com")  # the flag wins
+            self.assertEqual(gs.resolve_host(None), ("https", "graylog-dev.example.com"))
+            self.assertEqual(gs.resolve_host("graylog.example.com"), ("https", "graylog.example.com"))  # flag wins
+
+    def test_https_is_the_default_and_http_must_be_explicit(self):
+        self.assertEqual(gs.resolve_host("graylog.example.com:9000"), ("https", "graylog.example.com:9000"))
+        self.assertEqual(gs.resolve_host("http://127.0.0.1:9000"), ("http", "127.0.0.1:9000"))
+        self.assertEqual(gs.resolve_host("HTTP://graylog.example.com/"), ("http", "graylog.example.com"))
+
+    def test_is_local(self):
+        for host in ("localhost", "localhost:9000", "127.0.0.1", "127.0.0.1:9000", "[::1]", "[::1]:9000", "::1"):
+            with self.subTest(host=host):
+                self.assertTrue(gs.is_local(host))
+        for host in ("graylog.example.com", "graylog.example.com:9000", "10.0.0.5:9000", "[2001:db8::1]:9000"):
+            with self.subTest(host=host):
+                self.assertFalse(gs.is_local(host))
 
     def test_missing_host_explains_the_fix(self):
         with mock.patch.dict(os.environ, {"GRAYLOG_HOST": ""}):
@@ -179,15 +192,77 @@ class FakeGraylog(gs.Graylog):
     """A Graylog client whose HTTP layer returns a canned response."""
 
     def __init__(self, status: int, body: dict):
-        self.creds = mock.Mock(kind="test")
-        self.host = "graylog.example.com"
-        self.username = ""
+        super().__init__("graylog.example.com", mock.Mock(kind="test"))
         self._response = gs.Response(status, gs.json.dumps(body))
         self.calls = []
+        self.params = []
 
     def request(self, method, path, params=None, body=None, authenticate=True):
         self.calls.append((method, path, body))
+        self.params.append(params or {})
         return self._response
+
+
+class SearchRequestTest(unittest.TestCase):
+    """What a search sends to Graylog."""
+
+    def test_no_fields_list_by_default(self):
+        # Newer Graylog versions return only the listed fields; without a list they return all of them.
+        gl = FakeGraylog(200, {"messages": []})
+        gl.search("*", "f", "t", None, 10, None)
+        self.assertNotIn("fields", gl.params[0])
+
+    def test_explicit_fields_are_sent(self):
+        gl = FakeGraylog(200, {"messages": []})
+        gl.search("*", "f", "t", None, 10, "timestamp,message")
+        self.assertEqual(gl.params[0]["fields"], "timestamp,message")
+
+    def test_cli_default_sends_no_fields_list(self):
+        self.assertIsNone(gs.build_parser().parse_args(["*"]).fields)
+
+    def test_stream_filter_only_with_a_stream(self):
+        gl = FakeGraylog(200, {"messages": []})
+        gl.search("*", "f", "t", None, 10, None)
+        gl.search("*", "f", "t", "abc", 10, None)
+        self.assertNotIn("filter", gl.params[0])
+        self.assertEqual(gl.params[1]["filter"], "streams:abc")
+
+
+class SchemeTest(unittest.TestCase):
+    """The scheme decides the URL every request goes to."""
+
+    def url_for(self, scheme: str) -> str:
+        gl = gs.Graylog("graylog.example.com:9000", mock.Mock(user="u", password="p", kind="test"), scheme)
+        seen = []
+
+        def fake_urlopen(request, timeout):
+            seen.append(request.full_url)
+            raise gs.urllib.error.URLError("stop here")
+
+        with mock.patch.object(gs.urllib.request, "urlopen", fake_urlopen):
+            with self.assertRaises(gs.GraylogError):
+                gl.request("GET", "/system")
+        return seen[0]
+
+    def test_https_by_default(self):
+        self.assertEqual(self.url_for("https"), "https://graylog.example.com:9000/api/system")
+
+    def test_plain_http_when_asked(self):
+        self.assertEqual(self.url_for("http"), "http://graylog.example.com:9000/api/system")
+
+    def test_warning_for_plain_http_to_another_machine(self):
+        err = io.StringIO()
+        with mock.patch.dict(os.environ, {"GRAYLOG_HOST": "http://graylog.example.com", "GRAYLOG_TOKEN": "t"}):
+            with mock.patch.object(gs, "cmd_search"), redirect_stderr(err):
+                gs.main(["x"])
+        self.assertIn("plain HTTP", err.getvalue())
+
+    def test_no_warning_for_plain_http_on_this_machine(self):
+        err = io.StringIO()
+        with mock.patch.dict(os.environ, {"GRAYLOG_HOST": "http://localhost:9000", "GRAYLOG_TOKEN": "t"}):
+            with mock.patch.object(gs, "cmd_search"), redirect_stderr(err):
+                gs.main(["x"])
+        self.assertNotIn("plain HTTP", err.getvalue())
 
 
 def pivot_response(rows, total):
