@@ -43,7 +43,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 # Keep in step with "version" in plugins/graylog-search/.claude-plugin/plugin.json.
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 DEFAULT_LIMIT = 500
 DEFAULT_TOKEN_NAME = "graylog-search-cli"

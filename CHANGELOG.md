@@ -7,6 +7,10 @@ command-line interface between minor versions.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-12
+
+Tested with Graylog 4.2, 6.3 and 7.2.
+
 ### Added
 
 - Unit tests (`tests/`, standard-library `unittest`) run by GitHub Actions on Python 3.9 and the
@@ -49,5 +53,6 @@ First public release.
   return a short report.
 - Packaging as the `graylog-search` plugin in the `graylog-claude-kit` marketplace.
 
-[Unreleased]: https://github.com/tascigorkem/graylog-claude-kit/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/tascigorkem/graylog-claude-kit/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/tascigorkem/graylog-claude-kit/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/tascigorkem/graylog-claude-kit/releases/tag/v0.1.0

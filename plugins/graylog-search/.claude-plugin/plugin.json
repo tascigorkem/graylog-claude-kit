@@ -1,6 +1,6 @@
 {
   "name": "graylog-search",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Search, count and trace Graylog logs from Claude Code, or let an investigator agent work through them and report back.",
   "author": {
     "name": "Görkem Taşçı"
