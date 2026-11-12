@@ -67,8 +67,8 @@ without printing secrets.
 ## Requirements
 
 - Python 3.9 or newer (`python3 --version`)
-- A Graylog server you can log in to. Tested with Graylog 4.2 and 7.2; other 4.x–7.x versions are
-  expected to work. Reports about other versions are welcome.
+- A Graylog server you can log in to. Tested with Graylog 4.2, 6.3 and 7.2; other 4.x–7.x versions
+  are expected to work. Reports about other versions are welcome.
   `--group-by` uses the Views search API (`/api/views/search/sync`); if your account cannot use
   it, the CLI falls back to counting the fetched messages and says so.
 - For the skill and agent: Claude Code.
